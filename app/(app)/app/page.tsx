@@ -1,12 +1,28 @@
 "use client";
-import {useMe} from "@/components/me";
-import {useEffect,useState} from "react";import Link from "next/link";import {Trash2,Plus} from "lucide-react";import {Card,Btn,inp} from "@/components/ui";
-export default function Home(){const {admin}=useMe();const [cs,setCs]=useState<any[]>([]),[name,setName]=useState(""),[err,setErr]=useState("");
-  const load=()=>fetch("/api/clients").then(r=>r.json()).then(setCs);useEffect(()=>{load()},[]);
-  const add=async()=>{const r=await fetch("/api/clients",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});const j=await r.json();setErr(r.ok?"":j.error);if(r.ok){setName("");load()}};
+import {useEffect,useMemo,useState} from "react";import Link from "next/link";import {Trash2,Plus,ArrowUpRight,CalendarDays,Users,Layers,Zap} from "lucide-react";
+import {Card,Btn,inp} from "@/components/ui";import {useMe} from "@/components/me";import Kpi from "@/components/kpi";import {Pylon} from "@/components/illustrations";import {P,E,MN} from "@/lib/fmt";
+const TH=[["#f97316","#b93d0a"],["#f43f5e","#9f1239"],["#14b8a6","#0f766e"],["#8b5cf6","#5b21b6"],["#0ea5e9","#075985"],["#f59e0b","#b45309"]];
+const hash=(s:string)=>[...s].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
+function Spark({v,c}:{v:number[];c:string}){const mx=Math.max(...v,1),d="M"+v.map((x,i)=>`${(i/(v.length-1)*200).toFixed(1)},${(46-x/mx*40).toFixed(1)}`).join(" L");
+  return <svg viewBox="0 0 200 50" className="h-12 w-full" preserveAspectRatio="none"><path d={d+" L200,50 L0,50Z"} fill={c} fillOpacity=".18"/><path d={d} fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/></svg>}
+export default function Home(){const {admin}=useMe(),[cs,setCs]=useState<any[]|null>(null),[ms,setMs]=useState<any[]>([]),[name,setName]=useState(""),[err,setErr]=useState("");
+  const load=()=>{fetch("/api/clients").then(r=>r.json()).then(setCs);fetch("/api/months").then(r=>r.json()).then(setMs)};useEffect(load,[]);
+  const by=useMemo(()=>{const m:any={};ms.forEach(x=>(m[x.clientId]??=[]).push(x));return m},[ms]);
+  const add=async()=>{const r=await fetch("/api/clients",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})}),j=await r.json();setErr(r.ok?"":j.error);if(r.ok){setName("");load()}};
   const del=async(c:any)=>{if(confirm(`Delete ${c.name} and all its months?`)){await fetch("/api/clients/"+c.id,{method:"DELETE"});load()}};
-  return <div className="space-y-6"><h1 className="text-3xl font-semibold">Clients</h1>
-    {admin&&<Card><div className="flex gap-2"><input className={inp} placeholder="New client name" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}/><Btn onClick={add}><Plus size={16} className="inline"/> Add</Btn></div>{err&&<p className="mt-2 text-sm text-red-500">{err}</p>}</Card>}
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cs.map(c=><Card key={c.id} className="flex items-center justify-between transition hover:border-brand"><Link href={"/app/clients/"+c.id} className="flex-1 text-lg font-medium">{c.name}</Link>
-      {admin&&<button aria-label="Delete client" onClick={()=>del(c)} className="text-mut hover:text-red-500"><Trash2 size={18}/></button>}</Card>)}</div>
-    {!cs.length&&<p className="text-mut">No clients yet. Add your first client above.</p>}</div>}
+  const tot=ms.reduce((a,x)=>a+x.analysis.k.energyWh,0);
+  return <div className="space-y-6"><div><h1 className="text-3xl font-semibold">Clients</h1><p className="text-mut">Every client, its saved months and latest performance</p></div>
+    <div className="grid grid-cols-3 gap-4">{[["Clients",cs?.length||0,(v:number)=>Math.round(v)+"","Connected now"],["Months stored",ms.length,(v:number)=>Math.round(v)+"","All clients"],["Energy tracked",tot,(v:number)=>E(v),"All saved months"]].map(([l,v,f,s]:any,i)=><Kpi key={l+v} i={i} l={l} val={v} fmt={f} s={s}/>)}</div>
+    {admin&&<Card><div className="flex gap-2"><input className={inp} placeholder="New client name" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}/><Btn className="shrink-0 whitespace-nowrap" onClick={add}><Plus size={16} className="mr-1 inline"/>Add client</Btn></div>{err&&<p className="mt-2 text-sm text-red-500">{err}</p>}</Card>}
+    {cs===null&&<div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{[0,1,2].map(i=><div key={i} className="h-72 animate-pulse rounded-3xl border border-line bg-card/60"/>)}</div>}
+    {cs&&!cs.length&&<Card className="relative overflow-hidden text-center"><div className="mx-auto mb-4 h-40 max-w-sm overflow-hidden rounded-2xl bg-gradient-to-br from-brand to-brand-dk"><Pylon className="h-full w-full"/></div><h2 className="text-xl font-semibold">No clients yet</h2><p className="text-mut">{admin?"Add your first client above to start tracking load profiles.":"An admin needs to add the first client."}</p></Card>}
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{cs?.map((c,i)=>{const t=TH[hash(c.name)%TH.length],list=by[c.id]||[],l=list[0],k=l?.analysis.k;
+      return <div key={c.id} className="group relative" style={{animation:`rise .6s ${i*.08}s both`}}>
+        <Link href={"/app/clients/"+c.id} className="block overflow-hidden rounded-3xl border border-line bg-card/80 shadow-sm backdrop-blur transition duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/20">
+          <div className="relative h-36 overflow-hidden" style={{background:`linear-gradient(135deg,${t[0]},${t[1]})`}}><Pylon className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-110"/>
+            </div>
+          <div className="relative px-5 pb-5 pt-9"><span className="absolute -top-7 left-5 grid size-14 place-items-center rounded-2xl border-4 border-bg bg-card text-xl font-bold shadow-lg" style={{color:t[0]}}>{c.name.slice(0,1).toUpperCase()}</span><div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="truncate text-lg font-semibold">{c.name}</h3><p className="mt-0.5 flex items-center gap-1.5 text-sm text-mut"><CalendarDays size={13}/>{l?`${list.length} month${list.length>1?"s":""} · latest ${MN[l.month-1]} ${l.year}`:"No months yet"}</p></div>
+            <ArrowUpRight className="shrink-0 text-mut transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand" size={20}/></div>
+            {l?<><div className="mt-3"><Spark c={t[0]} v={l.analysis.hourly.avg}/></div><div className="mt-2 grid grid-cols-2 gap-3 text-sm"><div><p className="text-mut">Peak demand</p><p className="font-semibold">{P(k.maxW)}</p></div><div><p className="text-mut">Energy</p><p className="font-semibold">{E(k.energyWh)}</p></div></div></>
+              :<p className="mt-4 rounded-xl border border-dashed border-line p-3 text-center text-sm text-mut">Open to upload the first month</p>}</div></Link>
+        {admin&&<button aria-label={"Delete "+c.name} onClick={()=>del(c)} className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-red-500 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={15}/></button>}</div>})}</div></div>}

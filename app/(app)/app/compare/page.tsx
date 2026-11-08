@@ -1,15 +1,35 @@
 "use client";
-import {useEffect,useState} from "react";import {ResponsiveContainer,LineChart,Line,XAxis,YAxis,Tooltip,CartesianGrid,Legend} from "recharts";
-import {Card} from "@/components/ui";import {P,E,MN} from "@/lib/fmt";
-const COL=["#f97316","#3b82f6","#22c55e","#a855f7","#eab308","#ec4899"];
-export default function Compare(){const [all,setAll]=useState<any[]>([]),[sel,setSel]=useState<number[]>([]);
-  useEffect(()=>{fetch("/api/months").then(r=>r.json()).then(setAll)},[]);
-  const S=all.filter(x=>sel.includes(x.id)),L=(x:any)=>`${x.client} ${MN[x.month-1]} ${x.year}`;
-  const data=Array.from({length:24},(_,h)=>Object.fromEntries([["h",h+":00"],...S.map(x=>[L(x),x.analysis.hourly.avg[h]/1e6])]));
-  const toggle=(id:number)=>setSel(s=>s.includes(id)?s.filter(i=>i!==id):s.length<6?[...s,id]:s);
-  return <div className="space-y-6"><h1 className="text-3xl font-semibold">Compare</h1>
-    <Card><p className="mb-3 text-sm text-mut">Pick up to 6 saved months. Mix months, years or clients.</p><div className="flex flex-wrap gap-2">{all.map(x=><button key={x.id} onClick={()=>toggle(x.id)} className={"rounded-full border px-3 py-1.5 text-sm "+(sel.includes(x.id)?"border-brand bg-brand text-white":"border-line hover:border-brand")}>{L(x)}</button>)}</div></Card>
-    {!!S.length&&<><Card><h2 className="mb-3 font-semibold">Average daily load curve (MW)</h2><div className="h-80"><ResponsiveContainer><LineChart data={data}><CartesianGrid stroke="#a1a1aa" strokeOpacity={.2}/><XAxis dataKey="h" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}}/><Tooltip/><Legend/>
-      {S.map((x,i)=><Line key={x.id} dataKey={L(x)} stroke={COL[i]} strokeWidth={2.5} dot={false}/>)}</LineChart></ResponsiveContainer></div></Card>
+import {useEffect,useMemo,useState} from "react";import {X,Check,Layers} from "lucide-react";
+import {ResponsiveContainer,LineChart,Line,BarChart,Bar,Cell,XAxis,YAxis,Tooltip,CartesianGrid} from "recharts";
+import {Card,inp} from "@/components/ui";import {P,E,MN} from "@/lib/fmt";import {PAL} from "@/lib/gens";
+const col=(i:number)=>PAL[i%PAL.length],MAX=40,G="#a1a1aa",ax={tick:{fontSize:11}};
+const MET:any={maxW:["Max demand",(k:any)=>k.maxW/1e6,"MW"],energyWh:["Energy",(k:any)=>k.energyWh/1e6,"MWh"],avgW:["Average demand",(k:any)=>k.avgW/1e6,"MW"],lf:["Load factor",(k:any)=>k.lf*100,"%"],pf:["Power factor",(k:any)=>k.pf,""]};
+export default function Compare(){const [all,setAll]=useState<any[]>([]),[sel,setSel]=useState<number[]>([]),[cl,setCl]=useState(""),[yr,setYr]=useState(0),[met,setMet]=useState("maxW");
+  useEffect(()=>{fetch("/api/months").then(r=>r.json()).then((j:any[])=>{setAll(j);if(j[0]){setCl(j[0].client);setYr(j[0].year)}})},[]);
+  const clients=useMemo(()=>[...new Set(all.map(x=>x.client))].sort(),[all]);
+  const years=useMemo(()=>[...new Set(all.filter(x=>x.client===cl).map(x=>x.year))].sort((a,b)=>b-a),[all,cl]);
+  useEffect(()=>{if(years.length&&!years.includes(yr))setYr(years[0])},[years]);
+  const mm=useMemo(()=>{const o:any={};all.filter(x=>x.client===cl&&x.year===yr).forEach(x=>o[x.month]=x);return o},[all,cl,yr]);
+  const toggle=(id:number)=>setSel(s=>s.includes(id)?s.filter(i=>i!==id):s.length<MAX?[...s,id]:s);
+  const yearIds=Object.values(mm).map((x:any)=>x.id),allIn=yearIds.length>0&&yearIds.every(i=>sel.includes(i));
+  const S=sel.map(id=>all.find(x=>x.id===id)).filter(Boolean),multi=new Set(S.map(x=>x.client)).size>1;
+  const L=(x:any)=>`${multi?x.client+" · ":""}${MN[x.month-1]} ${x.year}`,short=(x:any)=>`${multi?x.client.slice(0,3)+" ":""}${MN[x.month-1]} ${String(x.year).slice(2)}`;
+  const data=Array.from({length:24},(_,h)=>Object.fromEntries([["h",h+":00"],...S.map(x=>["k"+x.id,x.analysis.hourly.avg[h]/1e6])]));
+  const bar=S.map((x,i)=>({n:short(x),v:+MET[met][1](x.analysis.k).toFixed(3),c:col(i)}));
+  return <div className="space-y-6"><div><h1 className="text-3xl font-semibold">Compare</h1><p className="text-mut">Pick any months, years or clients. Up to {MAX} at once.</p></div>
+    <Card><div className="grid gap-5 lg:grid-cols-[16rem_1fr]">
+      <div className="space-y-4"><label className="block text-sm"><span className="mb-1.5 block text-mut">Client</span><select className={inp+" !py-2.5 !font-medium"} value={cl} onChange={e=>setCl(e.target.value)}>{clients.map(c=><option key={c}>{c}</option>)}</select></label>
+        <div><span className="mb-1.5 block text-sm text-mut">Year</span><div className="flex flex-wrap gap-2">{years.map(y=><button key={y} onClick={()=>setYr(y)} className={"rounded-full border px-4 py-1.5 text-sm transition "+(y===yr?"border-brand bg-brand text-white shadow-md shadow-brand/25":"border-line hover:border-brand")}>{y}</button>)}</div></div>
+        <div className="flex flex-wrap gap-2 text-sm"><button className="rounded-lg border border-line px-3 py-1.5 hover:border-brand hover:text-brand" onClick={()=>setSel(s=>allIn?s.filter(i=>!yearIds.includes(i)):[...new Set([...s,...yearIds])].slice(0,MAX))}>{allIn?"Clear":"Select all"} {yr}</button>
+          <button className="rounded-lg border border-line px-3 py-1.5 hover:border-brand hover:text-brand" onClick={()=>setSel(s=>[...new Set([...s,...all.filter(x=>x.client===cl).map(x=>x.id)])].slice(0,MAX))}>All {cl}</button></div></div>
+      <div><span className="mb-1.5 block text-sm text-mut">Months of {cl} {yr}</span><div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">{MN.map((n,i)=>{const x=mm[i+1],on=x&&sel.includes(x.id);
+        return <button key={n} disabled={!x} onClick={()=>toggle(x.id)} className={"relative rounded-xl border px-3 py-3 text-left text-sm transition "+(on?"border-brand bg-brand/10 shadow-sm":x?"border-line hover:-translate-y-0.5 hover:border-brand":"cursor-not-allowed border-dashed border-line opacity-35")}>
+          <span className="font-medium">{n}</span>{x&&<span className="block text-xs text-mut">{P(x.analysis.k.maxW)}</span>}{on&&<Check size={14} className="absolute right-2 top-2 text-brand"/>}</button>})}</div></div></div></Card>
+    {!!S.length&&<><Card><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 font-semibold"><Layers size={16} className="text-brand"/>{S.length} selected</h2><button className="text-sm text-mut hover:text-red-500" onClick={()=>setSel([])}>Clear all</button></div>
+      <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">{S.map((x,i)=><span key={x.id} className="flex items-center gap-2 rounded-full border border-line bg-bg py-1 pl-3 pr-1.5 text-sm"><span className="size-2.5 rounded-full" style={{background:col(i)}}/>{L(x)}<button aria-label="Remove" className="grid size-5 place-items-center rounded-full text-mut hover:bg-red-500 hover:text-white" onClick={()=>toggle(x.id)}><X size={12}/></button></span>)}</div></Card>
+      <Card><h2 className="mb-3 font-semibold">Average daily load curve (MW)</h2><div className="h-80"><ResponsiveContainer><LineChart data={data}><CartesianGrid stroke={G} strokeOpacity={.2}/><XAxis dataKey="h" {...ax}/><YAxis {...ax}/><Tooltip/>{S.map((x,i)=><Line key={x.id} dataKey={"k"+x.id} name={L(x)} stroke={col(i)} strokeWidth={2.2} dot={false}/>)}</LineChart></ResponsiveContainer></div></Card>
+      <Card><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">{MET[met][0]} of each selection</h2><select className={inp+" !w-48"} value={met} onChange={e=>setMet(e.target.value)} aria-label="Metric">{Object.entries(MET).map(([k,v]:any)=><option key={k} value={k}>{v[0]}</option>)}</select></div>
+        <div className="h-72"><ResponsiveContainer><BarChart data={bar}><CartesianGrid stroke={G} strokeOpacity={.2}/><XAxis dataKey="n" interval={0} angle={-35} textAnchor="end" height={64} {...ax}/><YAxis unit={MET[met][2]?" "+MET[met][2]:""} {...ax}/><Tooltip/><Bar dataKey="v" name={MET[met][0]} radius={[4,4,0,0]}>{bar.map((b,i)=><Cell key={i} fill={b.c}/>)}</Bar></BarChart></ResponsiveContainer></div></Card>
       <Card className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-mut"><th className="py-2">Profile</th><th>Max demand</th><th>Energy</th><th>Avg demand</th><th>Load factor</th><th>PF</th></tr></thead>
-      <tbody>{S.map((x,i)=>{const k=x.analysis.k;return <tr key={x.id} className="border-t border-line"><td className="py-2 font-medium"><span className="mr-2 inline-block size-2.5 rounded-full" style={{background:COL[i]}}/>{L(x)}</td><td>{P(k.maxW)}</td><td>{E(k.energyWh)}</td><td>{P(k.avgW)}</td><td>{(k.lf*100).toFixed(1)}%</td><td>{k.pf.toFixed(2)}</td></tr>})}</tbody></table></Card></>}</div>}
+        <tbody>{S.map((x,i)=>{const k=x.analysis.k;return <tr key={x.id} className="border-t border-line"><td className="whitespace-nowrap py-2 font-medium"><span className="mr-2 inline-block size-2.5 rounded-full" style={{background:col(i)}}/>{L(x)}</td><td>{P(k.maxW)}</td><td>{E(k.energyWh)}</td><td>{P(k.avgW)}</td><td>{(k.lf*100).toFixed(1)}%</td><td>{k.pf.toFixed(2)}</td></tr>})}</tbody></table></Card></>}
+    {!S.length&&<Card><p className="text-mut">Choose months above to start comparing.</p></Card>}</div>}

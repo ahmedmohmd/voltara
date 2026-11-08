@@ -21,3 +21,6 @@ body{background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif}
 @keyframes wv{to{transform:translateX(-50%)}}
 @keyframes bub{0%{transform:translateY(0);opacity:0}15%{opacity:.7}100%{transform:translateY(-150px);opacity:0}}
 .wave{animation:wv 3.4s linear infinite}.wave2{animation:wv 5.5s linear infinite reverse}.bub{animation:bub 4s ease-in infinite}
+
+@keyframes flow{to{stroke-dashoffset:-24}}
+.flow path{stroke-dasharray:5 7;animation:flow 1.4s linear infinite}

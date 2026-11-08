@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@theme inline{--color-bg:var(--bg);--color-card:var(--card);--color-fg:var(--fg);--color-mut:var(--mut);--color-line:var(--line);--color-side:var(--side);--color-brand:var(--brand);
+--color-brand-lt:color-mix(in oklab,var(--brand),white 22%);--color-brand-dk:color-mix(in oklab,var(--brand),black 24%);--color-gold:#f5b942;--color-teal:#2dd4bf;--color-sky:#38bdf8}
+:root{--brand:#f97316;--bg:#f6f4f1;--card:#ffffff;--fg:#1c1917;--mut:#78716c;--line:#e7e2dc;--side:#ffffff}
+.dark{--bg:#000;--card:#0b0b0c;--fg:#fafafa;--mut:#a1a1aa;--line:#222225;--side:#060607}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif}
+.grid-bg{background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse at top,#000 25%,transparent 70%)}
+.draw{stroke-dasharray:700;stroke-dashoffset:700;animation:dr 2.4s .5s ease-out forwards}
+@keyframes dr{to{stroke-dashoffset:0}}
+@keyframes hdr{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}
+@keyframes flt{0%,100%{translate:0 0}50%{translate:0 -14px}}
+@keyframes spin3{to{transform:rotateX(360deg) rotateY(360deg)}}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.hdr-in{animation:hdr .7s cubic-bezier(.2,.8,.2,1)}.flt{animation:flt 5s ease-in-out infinite}.rise{animation:rise .8s .1s both}.rise2{animation:rise .8s .3s both}.rise3{animation:rise .8s .5s both}
+.cube{width:56px;height:56px;transform-style:preserve-3d;animation:spin3 16s linear infinite}
+.cube i{position:absolute;inset:0;border:1.5px solid rgba(249,115,22,.8);background:rgba(249,115,22,.12)}
+.cube i:nth-child(1){transform:translateZ(28px)}.cube i:nth-child(2){transform:rotateY(180deg) translateZ(28px)}.cube i:nth-child(3){transform:rotateY(90deg) translateZ(28px)}
+.cube i:nth-child(4){transform:rotateY(-90deg) translateZ(28px)}.cube i:nth-child(5){transform:rotateX(90deg) translateZ(28px)}.cube i:nth-child(6){transform:rotateX(-90deg) translateZ(28px)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.draw{stroke-dashoffset:0}}
+@keyframes wv{to{transform:translateX(-50%)}}
+@keyframes bub{0%{transform:translateY(0);opacity:0}15%{opacity:.7}100%{transform:translateY(-150px);opacity:0}}
+.wave{animation:wv 3.4s linear infinite}.wave2{animation:wv 5.5s linear infinite reverse}.bub{animation:bub 4s ease-in infinite}

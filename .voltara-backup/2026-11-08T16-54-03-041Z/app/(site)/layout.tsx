@@ -1,0 +1,3 @@
+import SiteHeader from "@/components/site-header";import Link from "next/link";
+export default function L({children}:{children:React.ReactNode}){return <div className="relative min-h-screen overflow-x-hidden"><div className="grid-bg pointer-events-none absolute inset-x-0 top-0 -z-10 h-[640px]"/><div className="pointer-events-none absolute left-1/2 top-0 -z-10 size-[620px] -translate-x-1/2 rounded-full bg-orange-500/20 blur-[120px]"/>
+  <SiteHeader/>{children}<footer className="border-t border-line py-8 text-center text-sm text-mut"><div className="mb-2 flex justify-center gap-5"><Link href="/">Home</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/app">App</Link></div>© 2026 Load Profile Manager</footer></div>}
